@@ -26,7 +26,14 @@ async fn main() {
 }
 
 fn route(cspo: ContentSecurityPolicyOption) -> Router {
-    Router::new().hoop(cspo).get(hello)
+    Router::new()
+        .hoop(cspo)
+        .hoop(
+            Compression::new()
+                .enable_gzip(CompressionLevel::Fastest)
+                .min_length(0),
+        )
+        .get(hello)
 }
 
 #[cfg(test)]
