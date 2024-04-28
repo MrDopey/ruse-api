@@ -1,4 +1,6 @@
-use handlers::content_security_policy::ContentSecurityPolicyOption;
+use handlers::{
+    content_security_policy::ContentSecurityPolicyOption, zoom_context::ZoomContextOptions,
+};
 use salvo::prelude::*;
 use std::env;
 mod handlers;
@@ -20,12 +22,13 @@ async fn main() {
     let redirect_url = env::var("ZM_REDIRECT_URL").expect("Zoom redirect url not defined");
 
     let cspo = ContentSecurityPolicyOption::new(redirect_url);
+    let zco = ZoomContextOptions::new("234inerst".to_string());
 
     let acceptor = TcpListener::new(format!("127.0.0.1:{port}")).bind().await;
-    Server::new(acceptor).serve(route(cspo)).await;
+    Server::new(acceptor).serve(route(cspo, zco)).await;
 }
 
-fn route(cspo: ContentSecurityPolicyOption) -> Router {
+fn route(cspo: ContentSecurityPolicyOption, zco: ZoomContextOptions) -> Router {
     Router::new()
         .hoop(cspo)
         .hoop(
@@ -33,7 +36,7 @@ fn route(cspo: ContentSecurityPolicyOption) -> Router {
                 .enable_gzip(CompressionLevel::Fastest)
                 .min_length(0),
         )
-        .get(hello)
+        .get(zco)
 }
 
 #[cfg(test)]
@@ -42,11 +45,13 @@ mod tests {
     use salvo::test::{ResponseExt, TestClient};
 
     use crate::handlers::content_security_policy::ContentSecurityPolicyOption;
+    use crate::handlers::zoom_context::ZoomContextOptions;
 
     #[tokio::test]
     async fn test_hello_word() {
         let cspo = ContentSecurityPolicyOption::new("https://www.test-website.com.au".to_string());
-        let service = Service::new(super::route(cspo));
+        let zco = ZoomContextOptions::new("arstnarest".to_string());
+        let service = Service::new(super::route(cspo, zco));
 
         let content = TestClient::get(format!("http://127.0.0.1:9000/"))
             .send(&service)
