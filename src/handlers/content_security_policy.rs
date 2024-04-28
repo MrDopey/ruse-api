@@ -1,24 +1,18 @@
 use salvo::http::header::{self, HeaderValue};
 use salvo::prelude::*;
 use std::collections::HashMap;
+use url::Url;
 
 pub struct ContentSecurityPolicyOption {
-    pub redirect: String,
+    value: String,
 }
 
-#[async_trait]
-impl Handler for ContentSecurityPolicyOption {
-    // async fn add_content_security_policy(host: &str) -> impl Fn(&mut Response) -> () {
-
-    async fn handle(
-        &self,
-        _req: &mut Request,
-        _depot: &mut Depot,
-        res: &mut Response,
-        _ctrl: &mut FlowCtrl,
-    ) {
-        let img_src = format!("'self' data: {}", self.redirect);
-        let connect_src = format!("'self' wss://{}", self.redirect);
+impl ContentSecurityPolicyOption {
+    pub fn new(http_string: String) -> Self {
+        let url = Url::parse(&http_string).expect("url is not valid");
+        let redirect = url.host_str().expect("cannot determine host");
+        let img_src = format!("'self' data: {}", redirect);
+        let connect_src = format!("'self' wss://{}", redirect);
         let maps = HashMap::from([
             ("default-src", "'self' 'unsafe-inline' 'unsafe-eval'"),
             ("style-src", "'self' 'unsafe-inline' 'unsafe-eval'"),
@@ -41,11 +35,24 @@ impl Handler for ContentSecurityPolicyOption {
             format!("{}{} {};", acc, it.0, it.1)
         });
 
+        Self { value }
+    }
+}
+
+#[async_trait]
+impl Handler for ContentSecurityPolicyOption {
+    async fn handle(
+        &self,
+        _req: &mut Request,
+        _depot: &mut Depot,
+        res: &mut Response,
+        _ctrl: &mut FlowCtrl,
+    ) {
         let headers = res.headers_mut();
 
         headers.insert(
             header::CONTENT_SECURITY_POLICY,
-            HeaderValue::from_str(&value).unwrap(),
+            HeaderValue::from_str(&self.value).unwrap(),
         );
         headers.insert(
             header::STRICT_TRANSPORT_SECURITY,

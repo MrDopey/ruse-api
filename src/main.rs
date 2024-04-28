@@ -17,9 +17,9 @@ async fn main() {
     }
     .unwrap_or(3000);
 
-    let cspo = ContentSecurityPolicyOption {
-        redirect: "arsars".to_string(),
-    };
+    let redirect_url = env::var("ZM_REDIRECT_URL").expect("Zoom redirect url not defined");
+
+    let cspo = ContentSecurityPolicyOption::new(redirect_url);
 
     let acceptor = TcpListener::new(format!("127.0.0.1:{port}")).bind().await;
     Server::new(acceptor).serve(route(cspo)).await;
@@ -38,9 +38,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_hello_word() {
-        let cspo = ContentSecurityPolicyOption {
-            redirect: "arsArs".to_string(),
-        };
+        let cspo = ContentSecurityPolicyOption::new("https://www.test-website.com.au".to_string());
         let service = Service::new(super::route(cspo));
 
         let content = TestClient::get(format!("http://127.0.0.1:9000/"))
