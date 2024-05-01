@@ -36,7 +36,8 @@ fn route(cspo: ContentSecurityPolicyOption, zco: ZoomContextOptions) -> Router {
                 .enable_gzip(CompressionLevel::Fastest)
                 .min_length(0),
         )
-        .get(zco)
+        .hoop(zco)
+        .get(hello)
 }
 
 #[cfg(test)]

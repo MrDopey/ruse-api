@@ -60,6 +60,7 @@ impl Handler for ZoomContextOptions {
                         "Zoom App Context Header must be < {} characters",
                         MAX_LENGTH.to_string()
                     )));
+                    ctrl.skip_rest();
                 } else {
                     // The zoom app sets some session (cookie?) variables, but doesn't seem to be
                     // used anywhere /shrug
@@ -67,7 +68,10 @@ impl Handler for ZoomContextOptions {
                     ctrl.call_next(req, depot, res).await;
                 }
             }
-            None => res.render(Text::Html(HOME_PAGE_HTML)),
+            None => {
+                res.render(Text::Html(HOME_PAGE_HTML));
+                ctrl.skip_rest();
+            }
         };
     }
 }
