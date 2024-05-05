@@ -42,6 +42,15 @@ struct DeepLinkRespone {
 }
 
 impl ZoomAuthOptions {
+    pub fn new(host: Url, client_id: String, client_secret: String, redirect_url: String) -> Self {
+        Self {
+            host,
+            client_id,
+            client_secret,
+            redirect_url,
+        }
+    }
+
     // https://developers.zoom.us/docs/integrations/oauth/
     async fn request_access_token(
         &self,

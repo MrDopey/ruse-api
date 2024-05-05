@@ -4,7 +4,7 @@ use std::collections::HashMap;
 use url::Url;
 
 pub struct ContentSecurityPolicyOption {
-    value: String,
+    redirect_url: String,
 }
 
 impl ContentSecurityPolicyOption {
@@ -35,7 +35,9 @@ impl ContentSecurityPolicyOption {
             format!("{}{} {};", acc, it.0, it.1)
         });
 
-        Self { value }
+        Self {
+            redirect_url: value,
+        }
     }
 }
 
@@ -52,7 +54,7 @@ impl Handler for ContentSecurityPolicyOption {
 
         headers.insert(
             header::CONTENT_SECURITY_POLICY,
-            HeaderValue::from_str(&self.value).unwrap(),
+            HeaderValue::from_str(&self.redirect_url).unwrap(),
         );
         headers.insert(
             header::STRICT_TRANSPORT_SECURITY,
