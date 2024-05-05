@@ -1,10 +1,7 @@
-use std::collections::HashMap;
-
 use base64::prelude::*;
 use reqwest::{Client, Method};
-use salvo::{http::form, prelude::*};
+use salvo::{http::cookie::Cookie, prelude::*};
 
-// use serde_urlencoded::to_string;
 use sha2::{Digest, Sha256};
 use url::Url;
 
@@ -21,6 +18,9 @@ pub struct ZoomApiOptions {
     redirect_url: String,
     session_secret: String,
 }
+
+pub static COOKIE_STATE: &str = "state";
+pub static COOKIE_VERIFIER: &str = "verifier";
 
 impl ZoomApiOptions {
     pub fn new(
@@ -73,22 +73,14 @@ impl Handler for ZoomApiOptions {
         _ctrl: &mut FlowCtrl,
     ) {
         let install_url = self.get_install_url();
-        // set cookies
+        res.add_cookie(Cookie::new(COOKIE_STATE, install_url.state))
+            .add_cookie(Cookie::new(COOKIE_VERIFIER, install_url.verifier));
         res.render(Redirect::found(install_url.url.as_str()));
     }
 }
 
 fn base64_url(s: &str) -> String {
     s.replace('+', "-").replace('/', "_").replace('=', "")
-}
-
-fn rand(fmt: &str, depth: usize) -> String {
-    let random_bytes = rand::random::<[u8; 32]>();
-    match fmt {
-        "base64" => base64_url(&BASE64_STANDARD.encode(&random_bytes)),
-        "ascii" => String::from_utf8_lossy(&random_bytes).to_string(),
-        _ => panic!("Invalid format"),
-    }
 }
 
 async fn token_request(

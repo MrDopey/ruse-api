@@ -1,6 +1,8 @@
+use std::f64::MANTISSA_DIGITS;
+
 use base64::prelude::*;
 use openssl::symm::{Cipher, Crypter, Mode};
-use salvo::prelude::*;
+use salvo::{http::cookie::Cookie, prelude::*};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 
@@ -62,9 +64,9 @@ impl Handler for ZoomContextOptions {
                     )));
                     ctrl.skip_rest();
                 } else {
-                    // The zoom app sets some session (cookie?) variables, but doesn't seem to be
-                    // used anywhere /shrug
-                    let _blah = decrypt(&head, &self.client_secret).unwrap();
+                    let zoom_auth = decrypt(&head, &self.client_secret).unwrap();
+                    res.add_cookie(Cookie::new("userId", zoom_auth.uid))
+                        .add_cookie(Cookie::new("meetingUUID", zoom_auth.mid));
                     ctrl.call_next(req, depot, res).await;
                 }
             }
