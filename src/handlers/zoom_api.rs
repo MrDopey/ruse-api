@@ -83,25 +83,6 @@ fn base64_url(s: &str) -> String {
     s.replace('+', "-").replace('/', "_").replace('=', "")
 }
 
-async fn token_request(
-    params: &str,
-    host: &str,
-    client_id: &str,
-    secret_id: &str,
-) -> Result<String, reqwest::Error> {
-    let client = Client::new();
-
-    let response = client
-        .post(&format!("{}/oauth/token", host))
-        .header("Content-Type", "application/x-www-form-urlencoded")
-        .basic_auth(client_id, Some(secret_id))
-        .body(params.to_string())
-        .send()
-        .await;
-
-    response?.text().await
-}
-
 async fn api_request(
     method: Method,
     host: &str,

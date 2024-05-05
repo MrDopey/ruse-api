@@ -1,5 +1,3 @@
-use std::f64::MANTISSA_DIGITS;
-
 use base64::prelude::*;
 use openssl::symm::{Cipher, Crypter, Mode};
 use salvo::{http::cookie::Cookie, prelude::*};

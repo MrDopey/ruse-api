@@ -1,14 +1,19 @@
-use reqwest::{Client, Method};
-use salvo::{http::cookie::Cookie, prelude::*};
+use reqwest::Client;
+use salvo::prelude::*;
 
+use serde::{Deserialize, Serialize};
 use url::Url;
 
 use super::zoom_api::{COOKIE_STATE, COOKIE_VERIFIER};
 
 struct AuthParam {
     code: String,
-    state: String,
     verifier: String,
+}
+
+#[derive(Deserialize)]
+struct TokenResponse {
+    access_token: String,
 }
 
 pub struct ZoomAuthOptions {
@@ -16,30 +21,97 @@ pub struct ZoomAuthOptions {
     client_id: String,
     client_secret: String,
     redirect_url: String,
-    session_secret: String,
+}
+
+#[derive(Serialize)]
+struct Body {
+    action: ActionBody,
+}
+
+#[derive(Serialize)]
+struct ActionBody {
+    url: String,
+    role_name: String,
+    verified: u8,
+    role_id: u8,
+}
+
+#[derive(Deserialize)]
+struct DeepLinkRespone {
+    deeplink: String,
 }
 
 impl ZoomAuthOptions {
-    async fn token_request(
-        params: &str,
-        host: &str,
-        client_id: &str,
-        secret_id: &str,
-    ) -> Result<String, reqwest::Error> {
+    // https://developers.zoom.us/docs/integrations/oauth/
+    async fn request_access_token(
+        &self,
+        auth_param: AuthParam,
+    ) -> Result<TokenResponse, reqwest::Error> {
         let client = Client::new();
 
-        let response = client
-            .post(&format!("{}/oauth/token", host))
-            .header("Content-Type", "application/x-www-form-urlencoded")
-            .basic_auth(client_id, Some(secret_id))
-            .body(params.to_string())
-            .send()
-            .await;
+        let mut url = self.host.clone();
+        url.set_path("oauth/token");
 
-        response?.text().await
+        let body = [
+            ("code", auth_param.code.as_str()),
+            ("code_verifier", auth_param.verifier.as_str()),
+            ("redirect_uri", self.redirect_url.as_str()),
+            ("grant_type", "authorization_code"),
+        ];
+
+        let response = client
+            .post(url.to_string())
+            .basic_auth(&self.client_id, Some(&self.client_secret))
+            .form(&body)
+            .send()
+            .await?;
+
+        Ok(response.json::<TokenResponse>().await?)
+    }
+
+    // https://developers.zoom.us/docs/zoom-apps/architecture/#deep-link-generation
+    async fn get_deep_link(
+        &self,
+        token_response: TokenResponse,
+    ) -> Result<DeepLinkRespone, reqwest::Error> {
+        let mut url = self.host.clone();
+        url.set_path("v2/zoomapp/deeplink");
+
+        let body = ActionBody {
+            url: "/".to_string(),
+            role_name: "Owner".to_string(),
+            verified: 1,
+            role_id: 0,
+        };
+
+        let client = Client::new();
+        client
+            .post(url.to_string())
+            .header("Content-Type", "application/x-www-form-urlencoded")
+            .bearer_auth(token_response.access_token)
+            .json(&body)
+            .send()
+            .await?
+            .json::<DeepLinkRespone>()
+            .await
+    }
+
+    async fn internal_handle(
+        &self,
+        req: &mut Request,
+    ) -> Result<DeepLinkRespone, (salvo::http::StatusCode, String)> {
+        let auth_param = validate_request(req).map_err(|x| (StatusCode::BAD_REQUEST, x))?;
+
+        let token = self
+            .request_access_token(auth_param)
+            .await
+            .map_err(|x| (StatusCode::INTERNAL_SERVER_ERROR, x.to_string()))?;
+
+        self.get_deep_link(token)
+            .await
+            .map_err(|x| (StatusCode::INTERNAL_SERVER_ERROR, x.to_string()))
     }
 }
-
 #[async_trait]
 impl Handler for ZoomAuthOptions {
     async fn handle(
@@ -51,14 +123,16 @@ impl Handler for ZoomAuthOptions {
     ) {
         res.remove_cookie(COOKIE_STATE);
 
-        let auth_param = validate_request(req);
-
-        if let Err(err) = auth_param {
-            res.status_code(StatusCode::BAD_REQUEST);
-            res.render(Text::Plain(err));
-            ctrl.skip_rest();
-            return;
-        };
+        match self.internal_handle(req).await {
+            Err(err) => {
+                res.status_code(err.0);
+                res.render(Text::Plain(err.1));
+                ctrl.skip_rest();
+            }
+            Ok(deep_link) => {
+                res.render(Redirect::found(deep_link.deeplink));
+            }
+        }
     }
 }
 
@@ -92,9 +166,5 @@ fn validate_request(req: &Request) -> Result<AuthParam, String> {
         .value()
         .to_string();
 
-    return Ok(AuthParam {
-        code,
-        state,
-        verifier,
-    });
+    return Ok(AuthParam { code, verifier });
 }
