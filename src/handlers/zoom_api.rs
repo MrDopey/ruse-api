@@ -1,11 +1,10 @@
 use base64::prelude::*;
-use reqwest::{Client, Method};
 use salvo::{http::cookie::Cookie, prelude::*};
 
 use sha2::{Digest, Sha256};
 use url::Url;
 
-pub struct InstallUrl {
+struct InstallUrl {
     url: Url,
     state: String,
     verifier: String,
@@ -14,28 +13,18 @@ pub struct InstallUrl {
 pub struct ZoomApiOptions {
     host: Url,
     client_id: String,
-    client_secret: String,
     redirect_url: String,
-    session_secret: String,
 }
 
 pub static COOKIE_STATE: &str = "state";
 pub static COOKIE_VERIFIER: &str = "verifier";
 
 impl ZoomApiOptions {
-    pub fn new(
-        host: Url,
-        client_id: String,
-        client_secret: String,
-        redirect_url: String,
-        session_secret: String,
-    ) -> Self {
+    pub fn new(host: Url, client_id: String, redirect_url: String) -> Self {
         Self {
             host,
             client_id,
-            client_secret,
             redirect_url,
-            session_secret,
         }
     }
 
@@ -81,25 +70,4 @@ impl Handler for ZoomApiOptions {
 
 fn base64_url(s: &str) -> String {
     s.replace('+', "-").replace('/', "_").replace('=', "")
-}
-
-async fn api_request(
-    method: Method,
-    host: &str,
-    endpoint: &str,
-    token: &str,
-    data: Option<&str>,
-) -> Result<String, Box<dyn std::error::Error>> {
-    let client = Client::new();
-    let url = Url::parse(&format!("{}/v2{}", host, endpoint))?;
-    let mut request = client.request(method, url);
-
-    if let Some(data) = data {
-        request = request
-            .header("Authorization", format!("Bearer {}", token))
-            .body(data.to_string());
-    }
-
-    let response = request.send().await;
-    Ok(response?.text().await?)
 }

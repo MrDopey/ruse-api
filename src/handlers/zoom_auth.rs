@@ -6,6 +6,13 @@ use url::Url;
 
 use super::zoom_api::{COOKIE_STATE, COOKIE_VERIFIER};
 
+pub struct ZoomAuthOptions {
+    host: Url,
+    client_id: String,
+    client_secret: String,
+    redirect_url: String,
+}
+
 struct AuthParam {
     code: String,
     verifier: String,
@@ -14,13 +21,6 @@ struct AuthParam {
 #[derive(Deserialize)]
 struct TokenResponse {
     access_token: String,
-}
-
-pub struct ZoomAuthOptions {
-    host: Url,
-    client_id: String,
-    client_secret: String,
-    redirect_url: String,
 }
 
 #[derive(Serialize)]
