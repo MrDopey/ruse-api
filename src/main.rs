@@ -7,26 +7,22 @@ use std::env;
 use url::Url;
 mod handlers;
 
-#[handler]
-async fn hello() -> &'static str {
-    "Hello World"
-}
-
 #[tokio::main]
 async fn main() {
     tracing_subscriber::fmt().init();
 
-    let (port, cspo, zco, zautho, zapio) = match parse_app_parameters() {
+    let (proxy_target, port, cspo, zco, zautho, zapio) = match parse_app_parameters() {
         Ok(x) => x,
         Err(err) => panic!("{}", err),
     };
     let acceptor = TcpListener::new(format!("127.0.0.1:{port}")).bind().await;
     Server::new(acceptor)
-        .serve(route(cspo, zco, zautho, zapio))
+        .serve(route(proxy_target, cspo, zco, zautho, zapio))
         .await;
 }
 
 fn route(
+    proxy_target: String,
     cspo: ContentSecurityPolicyOption,
     zco: ZoomContextOptions,
     zautho: ZoomAuthOptions,
@@ -39,14 +35,15 @@ fn route(
                 .enable_gzip(CompressionLevel::Fastest)
                 .min_length(0),
         )
-        .hoop(zco)
+        .get(zco)
         .push(Router::with_path("install").get(zapio))
         .push(Router::with_path("auth").get(zautho))
-        .get(hello)
+        .push(Router::with_path("<**rest_path>").get(Proxy::default_hyper_client(proxy_target)))
 }
 
 fn parse_app_parameters() -> Result<
     (
+        String,
         u16,
         ContentSecurityPolicyOption,
         ZoomContextOptions,
@@ -67,7 +64,8 @@ fn parse_app_parameters() -> Result<
 
     let redirect_url = get_env("ZM_REDIRECT_URL")?;
 
-    let host = get_env("ZOOM_HOST")?;
+    let host = get_env("ZOOM_HOST").unwrap_or("https://zoom.us".to_string());
+    let proxy_target = get_env("PROXY_TARGET")?;
 
     let host_parsed = Url::parse(&host).map_err(|x| x.to_string())?;
 
@@ -82,9 +80,9 @@ fn parse_app_parameters() -> Result<
         client_secret,
         redirect_url.clone(),
     );
-    let zapio = ZoomApiOptions::new(host_parsed, client_id, redirect_url);
+    let zapio = ZoomApiOptions::new(host_parsed, client_id, redirect_url.clone());
 
-    Ok((port, cspo, zco, zautho, zapio))
+    Ok((proxy_target, port, cspo, zco, zautho, zapio))
 }
 
 #[cfg(test)]
@@ -101,6 +99,7 @@ mod tests {
     #[tokio::test]
     async fn test_hello_word() {
         let host_parsed = Url::parse("https://www.example.com").unwrap();
+        let proxy_target = "https:www.example.com".to_string();
         let redirect_url = "https://www.test-website.com.au".to_string();
         let client_secret = "abc".to_string();
         let client_id = "def".to_string();
@@ -113,9 +112,9 @@ mod tests {
             client_secret,
             redirect_url.clone(),
         );
-        let zapio = ZoomApiOptions::new(host_parsed, client_id, redirect_url);
+        let zapio = ZoomApiOptions::new(proxy_target, client_id, redirect_url);
 
-        let service = Service::new(super::route(cspo, zco, zautho, zapio));
+        let service = Service::new(super::route(redirect_url, cspo, zco, zautho, zapio));
 
         let content = TestClient::get(format!("http://127.0.0.1:9000/"))
             .send(&service)
