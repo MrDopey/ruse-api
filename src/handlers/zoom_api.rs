@@ -29,8 +29,13 @@ impl ZoomApiOptions {
     }
 
     fn get_install_url(&self) -> InstallUrl {
-        let state = base64_url(&BASE64_STANDARD.encode(&rand::random::<[u8; 32]>()));
-        let verifier = String::from_utf8_lossy(&rand::random::<[u8; 32]>()).to_string();
+        let state = BASE64_URL_SAFE_NO_PAD
+            .encode(&rand::random::<[u8; 32]>())
+            .to_string();
+        let verifier =
+            String::from_utf8(rand::random::<[u8; 32]>().map(|x| x & 0b0111111).to_vec())
+                .expect("verfier is not well defined")
+                .to_string();
 
         let digest = BASE64_STANDARD.encode(Sha256::digest(verifier.clone()));
 
@@ -66,8 +71,4 @@ impl Handler for ZoomApiOptions {
             .add_cookie(Cookie::new(COOKIE_VERIFIER, install_url.verifier));
         res.render(Redirect::found(install_url.url.as_str()));
     }
-}
-
-fn base64_url(s: &str) -> String {
-    s.replace('+', "-").replace('/', "_").replace('=', "")
 }
