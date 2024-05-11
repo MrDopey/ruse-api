@@ -43,6 +43,21 @@ impl ZoomContextOptions {
     }
 }
 
+#[derive(Serialize, Deserialize, Debug, PartialEq)]
+struct ZoomAuth {
+    theme: String,
+    typ: String,
+    uid: String,
+    aud: String,
+    iss: String,
+    ts: u64,
+    exp: u64,
+    // entitlement: []
+    mid: String,
+    bmid: String,
+    attendrole: String,
+}
+
 #[async_trait]
 impl Handler for ZoomContextOptions {
     async fn handle(
@@ -80,7 +95,7 @@ fn unpack(
     context: &str,
 ) -> Result<(Vec<u8>, Vec<u8>, Vec<u8>, Vec<u8>), Box<dyn std::error::Error>> {
     // Decode base64
-    let buf = BASE64_STANDARD.decode(context)?;
+    let buf = BASE64_URL_SAFE_NO_PAD.decode(context)?;
     // Get iv length (1 byte)
     let iv_length = buf[0] as usize;
     let mut buf = &buf[1..];
@@ -123,12 +138,30 @@ fn decrypt(context: &str, secret: &str) -> Result<ZoomAuth, Box<dyn std::error::
     Ok(parsed)
 }
 
-#[derive(Serialize, Deserialize, Debug)]
-struct ZoomAuth {
-    typ: String,
-    uid: String,
-    mid: String,
-    act: String,
-    ts: u64,
-    exp: u64,
+#[cfg(test)]
+mod tests {
+    use crate::handlers::zoom_context::{decrypt, ZoomAuth};
+
+    #[test]
+    fn decrpyt_works_example1() {
+        let secret = "2HMe5DQBVJ1mi27T0VosZEogV66Bh7YZ";
+        let content = "DIzdZ5VGXOjDJuXWUwAA8gAAAI9a_46vOG1jYCisZegmi5dbkUqMIpfVOMqkWvKnMMGqFbtOE7nrLnX7ivCD7Q0FZ-id53OVlygAIQwLimND1A1kM3MC_y2JfxwP7AW_YcfFKm-p92ZmgjJYGlkI723f0JyalJjEalHid3bnUI_naK3hofllQfGEKHtVobB8HHHNhybM202rICbPPCZGNej9D4UvE1C7RNNSzi5VdmFtNA0KArZUr3lzhxaSxFNfprzZuG6vsKqB8CjDW2Srr3PHAOWmA0GsoSRx7n-qHF_ghJUOOQwX_RTR7hAZIS6972eIZq3_kk0-1MSqTO44L3kIyXCv1V-P8yUfbmOThKU-kIlBtw";
+
+        let results = decrypt(content, secret).unwrap();
+
+        let expected = ZoomAuth {
+            theme: "dark".to_string(),
+            typ: "meeting".to_string(),
+            uid: "gAVxCrl0SASZS4PvSa6Klw".to_string(),
+            aud: "TT6guPRRR0eZgqbRfiEIbQ".to_string(),
+            iss: "marketplace.zoom.us".to_string(),
+            ts: 1715424661124,
+            exp: 1715424781124,
+            mid: "lq4PWTWDRTO86IChgcygJg==".to_string(),
+            bmid: "".to_string(),
+            attendrole: "host".to_string(),
+        };
+
+        assert_eq!(results, expected);
+    }
 }
