@@ -93,10 +93,11 @@ impl ZoomAuthOptions {
             role_id: 0,
         };
 
+        println!("token: {}", token_response.access_token.clone());
+
         let client = Client::new();
         client
             .post(url.to_string())
-            .header("Content-Type", "application/x-www-form-urlencoded")
             .bearer_auth(token_response.access_token)
             .json(&body)
             .send()
@@ -135,7 +136,7 @@ impl Handler for ZoomAuthOptions {
         match self.internal_handle(req).await {
             Err(err) => {
                 res.status_code(err.0);
-                res.render(Text::Plain(err.1));
+                res.render(Text::Plain(format!("server error: {}", err.1)));
                 ctrl.skip_rest();
             }
             Ok(deep_link) => {
