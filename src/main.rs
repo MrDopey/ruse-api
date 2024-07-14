@@ -112,7 +112,11 @@ mod tests {
             client_secret,
             redirect_url.clone(),
         );
-        let zapio = ZoomApiOptions::new(proxy_target, client_id, redirect_url);
+        let zapio = ZoomApiOptions::new(
+            Url::parse(&proxy_target).unwrap(),
+            client_id,
+            redirect_url.clone(),
+        );
 
         let service = Service::new(super::route(redirect_url, cspo, zco, zautho, zapio));
 
