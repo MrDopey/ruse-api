@@ -54,7 +54,7 @@ struct ZoomAuth {
     exp: u64,
     // entitlement: []
     mid: String,
-    bmid: String,
+    bmid: Option<String>,
     attendrole: String,
 }
 
@@ -158,7 +158,7 @@ mod tests {
             ts: 1715424661124,
             exp: 1715424781124,
             mid: "lq4PWTWDRTO86IChgcygJg==".to_string(),
-            bmid: "".to_string(),
+            bmid: Some("".to_string()),
             attendrole: "host".to_string(),
         };
 
