@@ -1,4 +1,5 @@
 use base64::prelude::*;
+use rand::{distributions::Alphanumeric, thread_rng, Rng};
 use salvo::{http::cookie::Cookie, prelude::*};
 
 use sha2::{Digest, Sha256};
@@ -32,10 +33,11 @@ impl ZoomApiOptions {
         let state = BASE64_URL_SAFE_NO_PAD
             .encode(&rand::random::<[u8; 32]>())
             .to_string();
-        let verifier =
-            String::from_utf8(rand::random::<[u8; 32]>().map(|x| x & 0b0111111).to_vec())
-                .expect("verfier is not well defined")
-                .to_string();
+        let verifier = thread_rng()
+            .sample_iter(&Alphanumeric)
+            .take(32)
+            .map(char::from)
+            .collect::<String>();
 
         let digest = BASE64_STANDARD.encode(Sha256::digest(verifier.clone()));
 
