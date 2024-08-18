@@ -1210,26 +1210,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "rust-api"
-version = "0.1.0"
-dependencies = [
- "async-trait",
- "base64 0.22.0",
- "openssl",
- "openssl-sys",
- "rand",
- "reqwest",
- "salvo",
- "serde",
- "serde_json",
- "sha2",
- "tokio",
- "tracing",
- "tracing-subscriber",
- "url",
-]
-
-[[package]]
 name = "rustc-demangle"
 version = "0.1.23"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2261,6 +2241,26 @@ name = "zeroize"
 version = "1.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "525b4ec142c6b68a2d10f01f7bbf6755599ca3f81ea53b8431b7dd348f5fdb2d"
+
+[[package]]
+name = "zoomapps-server"
+version = "0.1.0"
+dependencies = [
+ "async-trait",
+ "base64 0.22.0",
+ "openssl",
+ "openssl-sys",
+ "rand",
+ "reqwest",
+ "salvo",
+ "serde",
+ "serde_json",
+ "sha2",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
+ "url",
+]
 
 [[package]]
 name = "zstd"

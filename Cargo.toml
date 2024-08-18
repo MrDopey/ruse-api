@@ -1,5 +1,5 @@
 [package]
-name = "rust-api"
+name = "zoomapps-server"
 version = "0.1.0"
 edition = "2021"
 publish = false

@@ -14,7 +14,7 @@ apt-get install -y openssl libssl-dev
 ## Build
 
 ```shell
-docker build -t rust-api:0.0.1 .
+docker build -t zoomapps-server:0.1.0 .
 ```
 
 ## Run
@@ -27,5 +27,5 @@ docker run --rm -it \
         -e ZM_REDIRECT_URL=$ZM_REDIRECT_URL \
         -e PROXY_TARGET=$PROXY_TARGET \
         -e ZOOM_APP_PORT=$ZOOM_APP_PORT \
-        rust-api:0.0.1
+        zoomapps-server:0.1.0
 ```
