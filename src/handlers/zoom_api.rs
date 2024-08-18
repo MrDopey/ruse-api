@@ -47,8 +47,8 @@ impl ZoomApiOptions {
             .append_pair("response_type", "code")
             .append_pair("client_id", &self.client_id)
             .append_pair("redirect_uri", &self.redirect_url)
-            .append_pair("code_challenge", &digest)
-            .append_pair("code_challenge_method", "S256")
+            // .append_pair("code_challenge", &digest)
+            // .append_pair("code_challenge_method", "S256")
             .append_pair("state", &state);
 
         InstallUrl {

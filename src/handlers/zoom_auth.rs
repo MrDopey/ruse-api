@@ -63,7 +63,7 @@ impl ZoomAuthOptions {
 
         let body = [
             ("code", auth_param.code.as_str()),
-            ("code_verifier", auth_param.verifier.as_str()),
+            // ("code_verifier", auth_param.verifier.as_str()),
             ("redirect_uri", self.redirect_url.as_str()),
             ("grant_type", "authorization_code"),
         ];
@@ -172,7 +172,7 @@ fn validate_request(req: &Request) -> Result<AuthParam, String> {
     let verifier = req
         .cookies()
         .get(COOKIE_VERIFIER)
-        .ok_or(format!("Cookie {} must be defined", COOKIE_STATE))?
+        .ok_or(format!("Cookie {} must be defined", COOKIE_VERIFIER))?
         .value()
         .to_string();
 

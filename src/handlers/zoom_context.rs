@@ -1,6 +1,6 @@
 use base64::prelude::*;
 use openssl::symm::{Cipher, Crypter, Mode};
-use salvo::{http::cookie::Cookie, prelude::*};
+use salvo::{http::cookie::Cookie, prelude::*, proxy::HyperClient};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 
@@ -35,11 +35,15 @@ static HOME_PAGE_HTML: &str = r#"<!DOCTYPE html>
 
 pub struct ZoomContextOptions {
     client_secret: String,
+    proxy: Proxy<String, HyperClient>,
 }
 
 impl ZoomContextOptions {
-    pub fn new(client_secret: String) -> Self {
-        Self { client_secret }
+    pub fn new(client_secret: String, proxy: Proxy<String, HyperClient>) -> Self {
+        Self {
+            client_secret,
+            proxy,
+        }
     }
 }
 
@@ -80,7 +84,8 @@ impl Handler for ZoomContextOptions {
                     let zoom_auth = decrypt(&head, &self.client_secret).unwrap();
                     res.add_cookie(Cookie::new("userId", zoom_auth.uid))
                         .add_cookie(Cookie::new("meetingUUID", zoom_auth.mid));
-                    ctrl.call_next(req, depot, res).await;
+
+                    self.proxy.handle(req, depot, res, ctrl).await
                 }
             }
             None => {

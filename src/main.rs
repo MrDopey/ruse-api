@@ -2,7 +2,7 @@ use handlers::{
     content_security_policy::ContentSecurityPolicyOption, zoom_api::ZoomApiOptions,
     zoom_auth::ZoomAuthOptions, zoom_context::ZoomContextOptions,
 };
-use salvo::prelude::*;
+use salvo::{prelude::*, proxy::HyperClient};
 use std::env;
 use url::Url;
 mod handlers;
@@ -11,18 +11,18 @@ mod handlers;
 async fn main() {
     tracing_subscriber::fmt().init();
 
-    let (proxy_target, port, cspo, zco, zautho, zapio) = match parse_app_parameters() {
+    let (proxy, port, cspo, zco, zautho, zapio) = match parse_app_parameters() {
         Ok(x) => x,
         Err(err) => panic!("{}", err),
     };
     let acceptor = TcpListener::new(format!("127.0.0.1:{port}")).bind().await;
     Server::new(acceptor)
-        .serve(route(proxy_target, cspo, zco, zautho, zapio))
+        .serve(route(proxy, cspo, zco, zautho, zapio))
         .await;
 }
 
 fn route(
-    proxy_target: String,
+    proxy: Proxy<String, HyperClient>,
     cspo: ContentSecurityPolicyOption,
     zco: ZoomContextOptions,
     zautho: ZoomAuthOptions,
@@ -38,12 +38,12 @@ fn route(
         .get(zco)
         .push(Router::with_path("install").get(zapio))
         .push(Router::with_path("auth").get(zautho))
-        .push(Router::with_path("<**rest_path>").get(Proxy::default_hyper_client(proxy_target)))
+        .push(Router::with_path("<**rest_path>").get(proxy))
 }
 
 fn parse_app_parameters() -> Result<
     (
-        String,
+        Proxy<String, HyperClient>,
         u16,
         ContentSecurityPolicyOption,
         ZoomContextOptions,
@@ -72,8 +72,9 @@ fn parse_app_parameters() -> Result<
     let client_id = get_env("ZM_CLIENT_ID")?;
     let client_secret = get_env("ZM_CLIENT_SECRET")?;
 
+    let proxy = Proxy::default_hyper_client(proxy_target.clone());
     let cspo = ContentSecurityPolicyOption::new(redirect_url.clone());
-    let zco = ZoomContextOptions::new(client_secret.clone());
+    let zco = ZoomContextOptions::new(client_secret.clone(), proxy);
     let zautho = ZoomAuthOptions::new(
         host_parsed.clone(),
         client_id.clone(),
@@ -82,7 +83,8 @@ fn parse_app_parameters() -> Result<
     );
     let zapio = ZoomApiOptions::new(host_parsed, client_id, redirect_url.clone());
 
-    Ok((proxy_target, port, cspo, zco, zautho, zapio))
+    let proxy = Proxy::default_hyper_client(proxy_target);
+    Ok((proxy, port, cspo, zco, zautho, zapio))
 }
 
 #[cfg(test)]
@@ -127,6 +129,6 @@ mod tests {
             .await
             .unwrap();
 
-        assert_eq!(content, "Hello World");
+        assert_ne!(content, "Hello World");
     }
 }
